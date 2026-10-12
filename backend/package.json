@@ -4,9 +4,9 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"build": "tsx",
+		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsx --env-file=.env --watch src/main.ts",
-		"start": "node ./bin/www",
+		"start": "node --enable-source-maps build/main.js",
 		"db:setup": "drizzle-kit generate && drizzle-kit migrate",
 		"db:seed": "tsx --env-file=.env src/db/seed/index.ts",
 		"lint": "biome lint .",
