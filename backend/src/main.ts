@@ -10,10 +10,22 @@ const app = express();
 app.use(express.json());
 app.use(cookieParser());
 
+app.get("/health", (_req, res) => {
+	res.json({ status: "ok" });
+});
+
 app.use("/api/v1", routes);
 
 app.use(errorHandler);
 
-app.listen(env.PORT, () => {
+const server = app.listen(env.PORT, () => {
 	console.log(`Server running at http://localhost:${env.PORT}`);
 });
+
+for (const signal of ["SIGTERM", "SIGINT"] as const) {
+	process.on(signal, () => {
+		console.log(`${signal} received, shutting down ...`);
+		server.close(() => process.exit(0));
+		setTimeout(() => process.exit(1), 10_000).unref();
+	});
+}
