@@ -10,7 +10,7 @@ import {
   FieldLabel,
 } from "~/components/ui/field"
 import { Input } from "~/components/ui/input"
-import { useForm } from '~/hooks/form'
+import { useForm } from '~/hooks/use-form'
 import { ApiError } from '~/services/api'
 import { login } from '~/services/auth'
 

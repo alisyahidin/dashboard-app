@@ -22,7 +22,6 @@ import {
 import { NavUser } from './nav-user'
 import { RoleBadge } from '~/components/role-badge'
 
-// SidebarProvider persists the open/collapsed state in this cookie
 function getSidebarDefaultOpen() {
   return !document.cookie.split('; ').includes('sidebar_state=false')
 }
@@ -35,7 +34,7 @@ export function LayoutDashboard({ user }: { user: User }) {
     <TooltipProvider>
       <SidebarProvider defaultOpen={getSidebarDefaultOpen()}>
         <AppSidebar user={user} />
-        <SidebarInset>
+        <SidebarInset className="min-w-0">
           <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2 px-4">
               <SidebarTrigger className="-ml-1" />

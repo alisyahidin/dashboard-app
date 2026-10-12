@@ -6,7 +6,6 @@ export type MenuItem = {
   title: string
   url: string
   icon: LucideIcon
-  // hide the menu unless the user has this permission
   permission?: string
 }
 
@@ -28,7 +27,6 @@ export function getVisibleMenus(user: User) {
   return menus.filter((menu) => !menu.permission || user.permissions.includes(menu.permission))
 }
 
-// "/" only matches exactly; other menus also match their sub pages (e.g. /reports/123)
 export function isMenuActive(menu: MenuItem, pathname: string) {
   return matchPath({ path: menu.url, end: menu.url === "/" }, pathname) !== null
 }

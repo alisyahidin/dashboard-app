@@ -1,5 +1,5 @@
-import { PageReports } from "~/pages/reports";
-import type { Route } from "./+types/reports";
+import { PageReports } from "~/pages/dashboard.reports";
+import type { Route } from "./+types/dashboard.reports";
 
 export function meta({}: Route.MetaArgs) {
   return [

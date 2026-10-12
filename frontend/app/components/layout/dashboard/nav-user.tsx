@@ -14,7 +14,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from '~/components/ui/sidebar'
 import { logout, type User } from '~/services/auth'
 
@@ -42,7 +41,6 @@ function UserSummary({ user }: { user: User }) {
 }
 
 export function NavUser({ user }: { user: User }) {
-  const { isMobile } = useSidebar()
   const navigate = useNavigate()
   const [loggingOut, setLoggingOut] = useState(false)
 
@@ -67,7 +65,7 @@ export function NavUser({ user }: { user: User }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--anchor-width) min-w-56"
-            side={isMobile ? "bottom" : "right"}
+            side="top"
             align="end"
             sideOffset={4}
           >
