@@ -6,6 +6,6 @@ const router: Router = expres.Router();
 
 router.post('/login', login);
 router.get('/me', requireAuth, me);
-router.post('/logout', requireAuth, logout);
+router.post('/logout', logout);
 
 export default router;

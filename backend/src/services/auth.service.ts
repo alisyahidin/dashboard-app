@@ -72,7 +72,9 @@ export const authService = {
     };
   },
 
-  async logout({ session }: AuthContext): Promise<void> {
-    await sessionRepository.revoke(session.id);
+  async logout(token: string | null): Promise<void> {
+    if (!token) return;
+    const auth = await this.authenticate(token).catch(() => null);
+    if (auth) await sessionRepository.revoke(auth.session.id);
   },
 };
