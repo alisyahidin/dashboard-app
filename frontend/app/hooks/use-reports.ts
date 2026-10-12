@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { getReport, getReportSummary, listReports, type ListReportsParams } from '~/services/reports'
+import { getReport, getReportCounts, listReports, type ListReportsParams } from '~/services/reports'
 
 const REPORTS_KEY = 'reports'
 
@@ -10,11 +10,11 @@ export function useReports(params: ListReportsParams) {
   })
 }
 
-export function useReportSummary() {
-  return useSWR([REPORTS_KEY, 'summary'], () => getReportSummary())
+export function useReportCounts() {
+  return useSWR([REPORTS_KEY, 'counts'], () => getReportCounts())
 }
 
-export function useReport(id: number | null) {
+export function useReport(id: string | null) {
   return useSWR(id === null ? null : [REPORTS_KEY, 'detail', id], ([, , reportId]) => getReport(reportId))
 }
 

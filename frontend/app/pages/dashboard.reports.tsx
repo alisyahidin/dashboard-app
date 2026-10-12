@@ -6,8 +6,8 @@ import {
   ChevronRightIcon,
   HistoryIcon,
   InboxIcon,
-  PencilIcon,
   Loader2Icon,
+  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -28,16 +28,10 @@ import { toast } from '~/components/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
 import { TruncatedText } from '~/components/truncated-text'
 import { useCurrentUser } from '~/hooks/use-current-user'
-import { useReports, useRevalidateReports } from '~/hooks/use-reports'
+import { useReportCounts, useReports, useRevalidateReports } from '~/hooks/use-reports'
 import { formatDateTime } from '~/lib/format'
-import { hasPermission } from '~/lib/permissions'
-import { ApiError } from '~/services/api'
-import {
-  changeReportStatus,
-  type Report,
-  type ReportStatus,
-  type ReportStatusFilter,
-} from '~/services/reports'
+import { canEditReport, hasPermission } from '~/lib/permissions'
+import type { Report, ReportStatus, ReportStatusFilter } from '~/services/reports'
 
 const PAGE_SIZE = 8
 const SEARCH_DEBOUNCE_MS = 300
@@ -59,11 +53,8 @@ function parsePage(value: string | null) {
 }
 
 function parseReportId(value: string | null) {
-  const id = Number(value)
-  return value && Number.isInteger(id) && id > 0 ? id : null
+  return value?.trim() || null
 }
-
-const statusLabel: Record<ReportStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }
 
 const col = {
   id: 'hidden w-20 pl-4 xl:table-cell',
@@ -97,7 +88,7 @@ export function PageReports() {
   const user = useCurrentUser()
   const canCreate = hasPermission(user, 'reports:write')
   const canReview = hasPermission(user, 'reports:approve')
-  const canEdit = hasPermission(user, 'reports:edit')
+  const canEdit = (report: Report) => canEditReport(user, report)
 
   const [searchParams, setSearchParams] = useSearchParams()
   const status = parseStatus(searchParams.get('status'))
@@ -119,6 +110,7 @@ export function PageReports() {
   }
 
   const list = useReports({ status, q, page, pageSize: PAGE_SIZE })
+  const counts = useReportCounts()
   const revalidateReports = useRevalidateReports()
   const data = list.data
   const failed = Boolean(list.error) && !list.isLoading
@@ -140,9 +132,9 @@ export function PageReports() {
   const [createOpen, setCreateOpen] = useState(false)
   const [rejecting, setRejecting] = useState<Report | null>(null)
   const [editing, setEditing] = useState<Report | null>(null)
-  const [busyIds, setBusyIds] = useState<ReadonlySet<number>>(new Set())
+  const [busyIds, setBusyIds] = useState<ReadonlySet<string>>(new Set())
 
-  function setBusy(id: number, busy: boolean) {
+  function setBusy(id: string, busy: boolean) {
     setBusyIds((prev) => {
       const next = new Set(prev)
       if (busy) next.add(id)
@@ -151,55 +143,11 @@ export function PageReports() {
     })
   }
 
-  async function decide(report: Report, to: Exclude<ReportStatus, 'pending'>, note = ''): Promise<boolean> {
+  async function decide(report: Report, _to: Exclude<ReportStatus, 'pending'>, _note = ''): Promise<boolean> {
     if (busyIds.has(report.id)) return false
     setRejecting(null)
     setBusy(report.id, true)
-    const changing = report.status !== 'pending'
     try {
-      await changeReportStatus(report.id, { status: to, note, expectedStatus: report.status })
-      toast.add({
-        type: 'success',
-        title: changing ? `Decision changed to ${statusLabel[to]}` : to === 'approved' ? 'Report approved' : 'Report rejected',
-        description: `${report.name} · added to history`,
-      })
-      revalidateReports()
-      return true
-    } catch (error) {
-      const status = error instanceof ApiError ? error.status : -1
-      if (status === 404) {
-        toast.add({
-          type: 'error',
-          title: 'Report not found',
-          description: `Report #${report.id} no longer exists on the server, so nothing was changed. The list has been refreshed.`,
-        })
-        revalidateReports()
-      } else if (status === 409) {
-        toast.add({
-          type: 'warning',
-          title: changing ? 'Status changed elsewhere' : 'Already reviewed',
-          description: `Report #${report.id} was updated in another session before your decision arrived. The table now shows its current status.`,
-        })
-        revalidateReports()
-      } else if (status === 403) {
-        toast.add({ type: 'error', title: 'Not allowed', description: 'Your role cannot approve or reject reports.' })
-      } else {
-        const toastId = toast.add({
-          type: 'error',
-          title: 'Decision was not saved',
-          description: status === 0
-            ? `The server could not be reached. Report #${report.id} is still ${report.status}.`
-            : `Something went wrong. Report #${report.id} is still ${report.status}.`,
-          timeout: 10_000,
-          actionProps: {
-            children: 'Retry',
-            onClick: () => {
-              toast.close(toastId)
-              decide(report, to, note)
-            },
-          },
-        })
-      }
       return false
     } finally {
       setBusy(report.id, false)
@@ -278,7 +226,7 @@ export function PageReports() {
           </div>
         ) : !list.isLoading && data && data.total === 0 ? (
           <div className="border-t">
-            {data.counts.all === 0 ? (
+            {counts.data?.all === 0 ? (
               <StateMessage
                 icon={InboxIcon}
                 title="No reports yet"
@@ -336,7 +284,7 @@ export function PageReports() {
                   )
                   return (
                     <TableRow key={report.id}>
-                      <TableCell className={`${col.id} font-mono text-xs text-muted-foreground`}>#{report.id}</TableCell>
+                      <TableCell className={`${col.id} font-mono text-xs text-muted-foreground`}>#{report.number}</TableCell>
                       <TableCell className={`${col.name} font-medium`}>
                         <TruncatedText
                           className="text-left underline-offset-4 hover:underline focus-visible:underline focus-visible:outline-none"
@@ -375,7 +323,7 @@ export function PageReports() {
                                 Reject
                               </Button>
                             </div>
-                          ) : canEdit ? (
+                          ) : canEdit(report) ? (
                             <Button variant="outline" size="sm" onClick={() => setEditing(report)}>
                               <PencilIcon data-icon="inline-start" />
                               Edit
@@ -446,7 +394,7 @@ export function PageReports() {
           revalidateReports()
         }}
         onStale={(error) => {
-          const id = editing?.id
+          const id = editing?.number
           setEditing(null)
           toast.add(
             error.status === 404

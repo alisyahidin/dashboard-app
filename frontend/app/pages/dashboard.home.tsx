@@ -20,7 +20,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~
 import { toast } from '~/components/ui/toast'
 import { TruncatedText } from '~/components/truncated-text'
 import { useCurrentUser } from '~/hooks/use-current-user'
-import { useReportSummary, useRevalidateReports } from '~/hooks/use-reports'
+import { useReportCounts, useReports, useRevalidateReports } from '~/hooks/use-reports'
 import { formatDateTime } from '~/lib/format'
 import { hasPermission } from '~/lib/permissions'
 import type { ReportCounts } from '~/services/reports'
@@ -47,11 +47,12 @@ export function PageDashboard() {
   const canReview = hasPermission(user, 'reports:approve')
   const [createOpen, setCreateOpen] = useState(false)
 
-  const summary = useReportSummary()
+  const countsQuery = useReportCounts()
+  const latestQuery = useReports({ status: 'all', page: 1, pageSize: 5 })
   const revalidateReports = useRevalidateReports()
-  const counts = summary.data?.counts
-  const latest = summary.data?.latest ?? []
-  const failed = Boolean(summary.error) && !summary.isLoading
+  const counts = countsQuery.data
+  const latest = latestQuery.data?.items ?? []
+  const failed = Boolean(latestQuery.error) && !latestQuery.isLoading
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -76,7 +77,7 @@ export function PageDashboard() {
                 {label}
                 <Icon className="size-4" aria-hidden="true" />
               </div>
-              {summary.isLoading ? (
+              {countsQuery.isLoading ? (
                 <Skeleton className="my-0.5 h-7 w-12" />
               ) : (
                 <div className="text-2xl font-semibold tabular-nums">{counts ? counts[key] : '—'}</div>
@@ -101,9 +102,9 @@ export function PageDashboard() {
 
         {failed ? (
           <div className="border-t">
-            <LoadError detail="GET /api/v1/reports/summary failed" onRetry={() => summary.mutate()} />
+            <LoadError detail="GET /api/v1/reports failed" onRetry={() => revalidateReports()} />
           </div>
-        ) : !summary.isLoading && latest.length === 0 ? (
+        ) : !latestQuery.isLoading && latest.length === 0 ? (
           <div className="border-t">
             <StateMessage
               icon={InboxIcon}
@@ -119,7 +120,7 @@ export function PageDashboard() {
             </StateMessage>
           </div>
         ) : (
-          <Table className="table-fixed" aria-busy={summary.isLoading}>
+          <Table className="table-fixed" aria-busy={latestQuery.isLoading}>
             <TableHeader>
               <TableRow className="bg-muted/40 hover:bg-muted/40">
                 <TableHead className={col.id}>ID</TableHead>
@@ -131,7 +132,7 @@ export function PageDashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {summary.isLoading ? (
+              {latestQuery.isLoading ? (
                 <TableSkeletonRows
                   columns={6}
                   skeletonClassName='min-h-[22px]'
@@ -140,7 +141,7 @@ export function PageDashboard() {
               ) : (
                 latest.map((report) => (
                   <TableRow key={report.id}>
-                    <TableCell className={`${col.id} font-mono text-xs text-muted-foreground`}>#{report.id}</TableCell>
+                    <TableCell className={`${col.id} font-mono text-xs text-muted-foreground`}>#{report.number}</TableCell>
                     <TableCell className={`${col.name} font-medium`}>
                       <TruncatedText>{report.name}</TruncatedText>
                     </TableCell>

@@ -30,6 +30,8 @@ const markerStyles: Record<ReportStatus, { icon: typeof CheckIcon; className: st
   rejected: { icon: XIcon, className: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300' },
 }
 
+const roleLabel: Record<string, string> = { admin: 'Admin', supervisor: 'Supervisor', officer: 'Field officer' }
+
 const editedMarker = { icon: PencilIcon, className: 'bg-muted text-muted-foreground' }
 
 function entryTitle(entry: ReportHistoryEntry) {
@@ -56,9 +58,9 @@ export function ReportHistorySheet({
   onEdit,
   onDecide,
 }: {
-  reportId: number | null
+  reportId: string | null
   canReview: boolean
-  canEdit: boolean
+  canEdit: (report: Report) => boolean
   busy: boolean
   onClose: () => void
   onEdit: (report: Report) => void
@@ -100,9 +102,9 @@ export function ReportHistorySheet({
           <>
             <SheetHeader className="gap-2.5 border-b p-6">
               <div className="flex items-center gap-2 pr-8">
-                <span className="font-mono text-xs text-muted-foreground">#{report.id}</span>
+                <span className="font-mono text-xs text-muted-foreground">#{report.number}</span>
                 <ReportStatusBadge status={report.status} />
-                {canEdit && report.status === 'pending' && (
+                {canEdit(report) && (
                   <Button variant="outline" size="sm" className="ml-auto" onClick={() => onEdit(report)}>
                     <PencilIcon data-icon="inline-start" />
                     Edit
@@ -114,7 +116,7 @@ export function ReportHistorySheet({
               <dl className="mt-1 grid grid-cols-2 gap-3 text-sm">
                 <div className="flex flex-col gap-0.5">
                   <dt className="text-xs text-muted-foreground">Submitted by</dt>
-                  <dd className="font-medium">{report.submittedBy}</dd>
+                  <dd className="font-medium">{report.submittedBy.name}</dd>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <dt className="text-xs text-muted-foreground">Created</dt>
@@ -214,7 +216,7 @@ export function ReportHistorySheet({
                           <span className="text-xs text-muted-foreground">{entryTransition(entry)}</span>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          {entry.actor} · {entry.actorRole} · <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
+                          {entry.actor.name} · {(entry.actor.role && roleLabel[entry.actor.role]) ?? 'No role'} · <time dateTime={entry.at}>{formatDateTime(entry.at)}</time>
                         </div>
                         {entry.note && (
                           <p className="mt-1 rounded-lg border bg-muted/50 px-2.5 py-2 text-sm text-foreground/80">{entry.note}</p>
@@ -232,7 +234,7 @@ export function ReportHistorySheet({
             <StateMessage
               icon={FileXIcon}
               title="Report not found"
-              description={`Report #${reportId} doesn't exist or was removed. The link may be out of date.`}
+              description="This report doesn't exist or was removed. The link may be out of date."
             />
           </div>
         ) : error && !isLoading ? (
