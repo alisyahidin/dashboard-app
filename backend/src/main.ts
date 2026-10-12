@@ -1,21 +1,17 @@
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import express from "express";
 import routes from './routes/v1/index.js';
 import { env } from './config/env.js';
-
-dotenv.config();
+import { errorHandler } from './middlewares/error.middleware.js';
 
 const app = express();
-const port = env.PORT;
 
-app.get("/", (_, res) => {
-	res.json({
-		message: 'Hello World'
-	})
-});
+app.use(express.json());
 
 app.use("/api/v1", routes);
 
-app.listen(port, () => {
-	console.log(`Server running at http://localhost:${port}`);
+app.use(errorHandler);
+
+app.listen(env.PORT, () => {
+	console.log(`Server running at http://localhost:${env.PORT}`);
 });
