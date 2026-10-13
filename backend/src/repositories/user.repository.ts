@@ -48,7 +48,7 @@ export const userRepository = {
     const [row] = await db
       .select({ id: users.id })
       .from(users)
-      .where(and(eq(users.email, email), exceptId ? ne(users.id, exceptId) : undefined, isNull(users.deletedAt)))
+      .where(and(eq(users.email, email), exceptId ? ne(users.id, exceptId) : undefined))
       .limit(1);
     return Boolean(row);
   },

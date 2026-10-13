@@ -3,7 +3,7 @@ import { userResponseSchema } from './user.dto.js';
 
 // request
 export const loginRequestSchema = z.object({
-  email: z.email().transform((email) => email.toLowerCase()),
+  email: z.string().trim().toLowerCase().pipe(z.email()),
   password: z.string().min(1),
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;

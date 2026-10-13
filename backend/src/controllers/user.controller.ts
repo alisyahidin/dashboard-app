@@ -22,5 +22,6 @@ export const createUser: RequestHandler = async (req, res) => {
 export const updateUser: RequestHandler = async (req, res) => {
   const id = getUserId(req);
   const body = updateUserRequestSchema.parse(req.body);
-  res.json(await userService.update(id, body));
+  if (!req.auth) throw new UnauthorizedError();
+  res.json(await userService.update(id, body, req.auth.user.id));
 };

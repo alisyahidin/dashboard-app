@@ -4,6 +4,7 @@ import type { LoginRequest, LoginResponse, MeResponse } from '../dto/auth.dto.js
 import { toUserResponse } from '../dto/user.dto.js';
 import { UnauthorizedError } from '../lib/errors.js';
 import { signAccessToken, verifyAccessToken } from '../lib/jwt.js';
+import { loginThrottle } from '../lib/login-throttle.js';
 import { type RoleWithPermissions, roleRepository } from '../repositories/role.repository.js';
 import { sessionRepository } from '../repositories/session.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
@@ -26,12 +27,15 @@ async function loadRole(roleId: string | null): Promise<RoleWithPermissions | nu
 
 export const authService = {
   async login({ email, password }: LoginRequest, meta: ClientMeta): Promise<LoginResponse> {
+    loginThrottle.assertAllowed(email, meta.ipAddress);
     const user = await userRepository.findActiveByEmail(email);
 
     const passwordValid = await argon2.verify(user?.passwordHash ?? DUMMY_HASH, password);
     if (!user?.passwordHash || !passwordValid) {
+      loginThrottle.recordFailure(email, meta.ipAddress);
       throw new UnauthorizedError('Invalid email or password');
     }
+    loginThrottle.reset(email, meta.ipAddress);
 
     return this.startSession(user, meta);
   },
