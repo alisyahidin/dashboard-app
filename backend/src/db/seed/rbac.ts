@@ -1,3 +1,4 @@
+import { and, eq, notInArray } from 'drizzle-orm';
 import type { dbSeed } from './index.js';
 
 import { PERMISSIONS, ROLE_PERMISSIONS, ROLES } from '../../constants/rbac.js';
@@ -29,6 +30,15 @@ export async function seedRbac(db: typeof dbSeed) {
   );
 
   await db.insert(schema.rolePermissions).values(rolePermissions).onConflictDoNothing();
+
+  for (const role of ROLES) {
+    const roleId = roleIds.get(role);
+    if (!roleId) continue;
+    const allowed = rolePermissions.filter((rp) => rp.roleId === roleId).map((rp) => rp.permissionId);
+    await db
+      .delete(schema.rolePermissions)
+      .where(and(eq(schema.rolePermissions.roleId, roleId), notInArray(schema.rolePermissions.permissionId, allowed)));
+  }
 
   console.log('seeding rbac ended ...');
 }

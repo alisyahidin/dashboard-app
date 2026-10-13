@@ -21,3 +21,27 @@ export class ForbiddenError extends HttpError {
     this.name = 'ForbiddenError';
   }
 }
+
+export class NotFoundError extends HttpError {
+  constructor(message = 'Not Found') {
+    super(404, message);
+    this.name = 'NotFoundError';
+  }
+}
+
+export class ConflictError extends HttpError {
+  constructor(message = 'Conflict') {
+    super(409, message);
+    this.name = 'ConflictError';
+  }
+}
+
+export class ValidationError extends HttpError {
+  constructor(
+    public readonly fieldErrors: Record<string, string[]>,
+    message = 'Invalid request body',
+  ) {
+    super(400, message);
+    this.name = 'ValidationError';
+  }
+}
