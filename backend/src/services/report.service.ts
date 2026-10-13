@@ -25,8 +25,8 @@ async function loadDetail(id: string, createdBy?: string): Promise<ReportDetailR
 }
 
 export const reportService = {
-  async list(auth: AuthContext, { status, q, page, pageSize }: ListReportsQuery): Promise<ListReportsResponse> {
-    const filter = { status, q, createdBy: ownerScope(auth) };
+  async list(auth: AuthContext, { status, q, officer, page, pageSize }: ListReportsQuery): Promise<ListReportsResponse> {
+    const filter = { status, q, createdBy: ownerScope(auth) ?? officer };
     const total = await reportRepository.count(filter);
     const pageCount = Math.max(1, Math.ceil(total / pageSize));
     const currentPage = Math.min(page, pageCount);

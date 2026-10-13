@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~
 import { toast } from '~/components/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
 import { TruncatedText } from '~/components/truncated-text'
+import { useUsers } from '~/hooks/use-admin'
 import { isForbidden, useAuthErrorHandler } from '~/hooks/use-auth-error'
 import { useCurrentUser } from '~/hooks/use-current-user'
 import { useReportCounts, useReports, useRevalidateReports } from '~/hooks/use-reports'
@@ -94,10 +95,12 @@ export function PageReports() {
   const canCreate = hasPermission(user, 'reports:write')
   const canReview = hasPermission(user, 'reports:approve')
   const canEdit = (report: Report) => canEditReport(user, report)
+  const canFilterByOfficer = user.role === 'admin' || user.role === 'supervisor'
 
   const [searchParams, setSearchParams] = useSearchParams()
   const status = parseStatus(searchParams.get('status'))
   const q = searchParams.get('q') ?? ''
+  const officer = canFilterByOfficer ? searchParams.get('officer') ?? 'all' : 'all'
   const page = parsePage(searchParams.get('page'))
   const openReportId = parseReportId(searchParams.get('report'))
 
@@ -114,7 +117,12 @@ export function PageReports() {
     setSearchParams(next, { replace: options.replace ?? false })
   }
 
-  const list = useReports({ status, q, page, pageSize: PAGE_SIZE })
+  const list = useReports({ status, q, officer: officer === 'all' ? '' : officer, page, pageSize: PAGE_SIZE })
+  const officers = useUsers(canFilterByOfficer ? { roleId: 'officer', pageSize: 100 } : null)
+  const officerOptions = [
+    { value: 'all', label: 'All officers' },
+    ...(officers.data?.items ?? []).map((o) => ({ value: o.id, label: o.name })),
+  ]
   const counts = useReportCounts()
   const revalidateReports = useRevalidateReports()
   const data = list.data
@@ -209,8 +217,8 @@ export function PageReports() {
     }
   }
 
-  const hasFilters = status !== 'all' || q !== ''
-  const clearFilters = () => updateParams({ status: null, q: null, page: null })
+  const hasFilters = status !== 'all' || q !== '' || officer !== 'all'
+  const clearFilters = () => updateParams({ status: null, q: null, officer: null, page: null })
   const rows = data?.items ?? []
   const first = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0
   const last = first > 0 ? first + rows.length - 1 : 0
@@ -255,6 +263,26 @@ export function PageReports() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+          {canFilterByOfficer && (
+            <Select
+              items={officerOptions}
+              value={officer}
+              disabled={disableControls}
+              onValueChange={(value) => {
+                const next = String(value ?? 'all')
+                updateParams({ officer: next === 'all' ? null : next, page: null })
+              }}
+            >
+              <SelectTrigger aria-label="Filter by officer" className="h-9 w-full sm:ml-auto sm:w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {officerOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <Select
             items={statusOptions}
             value={status}

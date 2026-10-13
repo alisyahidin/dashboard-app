@@ -62,6 +62,7 @@ export const REPORT_PAGE_SIZE_MAX = 100;
 export const listReportsQuerySchema = z.object({
   status: z.enum(['all', 'pending', 'approved', 'rejected']).catch('all'),
   q: z.string().trim().max(100).catch(''),
+  officer: z.uuid().optional().catch(undefined),
   page: z.coerce.number().int().min(1).catch(1),
   pageSize: z.coerce.number().int().min(1).max(REPORT_PAGE_SIZE_MAX).catch(REPORT_PAGE_SIZE_DEFAULT),
 });

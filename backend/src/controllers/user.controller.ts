@@ -10,7 +10,12 @@ function getUserId(req: Request) {
 }
 
 export const listUsers: RequestHandler = async (req, res) => {
-  res.json(await userService.list(listUsersQuerySchema.parse(req.query)));
+  const result = await userService.list(listUsersQuerySchema.parse(req.query));
+  if (req.auth?.role?.name === 'admin') {
+    res.json(result);
+    return;
+  }
+  res.json({ ...result, items: result.items.map((user) => ({ ...user, invite: null })) });
 };
 
 export const createUser: RequestHandler = async (req, res) => {

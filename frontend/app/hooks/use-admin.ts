@@ -5,8 +5,8 @@ import { listUsers, type ListUsersParams } from '~/services/users'
 
 const ADMIN_KEY = 'admin'
 
-export function useUsers(params: ListUsersParams) {
-  return useSWR([ADMIN_KEY, 'users', params], ([, , p]) => listUsers(p), { keepPreviousData: true })
+export function useUsers(params: ListUsersParams | null) {
+  return useSWR(params ? [ADMIN_KEY, 'users', params] : null, ([, , p]) => listUsers(p), { keepPreviousData: true })
 }
 
 export function useRoles() {

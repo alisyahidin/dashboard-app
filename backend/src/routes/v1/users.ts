@@ -5,7 +5,7 @@ import { requireRole } from '../../middlewares/rbac.middleware.js';
 
 const router: Router = expres.Router();
 
-router.get('/', requireAuth, requireRole('admin'), listUsers);
+router.get('/', requireAuth, requireRole('admin', 'supervisor'), listUsers);
 router.post('/', requireAuth, requireRole('admin'), createUser);
 router.patch('/:id', requireAuth, requireRole('admin'), updateUser);
 
