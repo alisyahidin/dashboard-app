@@ -7,15 +7,15 @@ const roleStyles: Record<string, string> = {
   officer: "bg-sky-100 text-sky-700 dark:bg-sky-500/20 dark:text-sky-300",
 }
 
-export function RoleBadge({ role, className }: { role: string | null; className?: string }) {
+export function RoleBadge({ role, label, className }: { role: string | null; label?: string; className?: string }) {
   const style = role ? roleStyles[role] : undefined
 
   return (
     <Badge
       variant={style ? "default" : "outline"}
-      className={cn("capitalize", style, className)}
+      className={cn(!label && "capitalize", style, className)}
     >
-      {role ?? "no role"}
+      {label ?? role ?? "no role"}
     </Badge>
   )
 }
