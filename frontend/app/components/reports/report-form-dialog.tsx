@@ -143,7 +143,7 @@ export function ReportFormDialog({
                   <Input
                     id="report-name"
                     name={field.name}
-                    placeholder="Borehole BH-08 soil investigation"
+                    placeholder="Report title"
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}

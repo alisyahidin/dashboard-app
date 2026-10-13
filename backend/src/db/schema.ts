@@ -38,6 +38,15 @@ export const users = pgTable("users", {
   index("users_role_id_idx").on(table.roleId),
 ]);
 
+export const invites = pgTable("invites", {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid("user_id").notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar({ length: 64 }).notNull().unique(),
+  invitedBy: uuid("invited_by").references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at", { mode: 'string', withTimezone: true }).defaultNow().notNull(),
+  usedAt: timestamp("used_at", { mode: 'string', withTimezone: true }),
+});
+
 export const sessions = pgTable("sessions", {
   ...baseColumns,
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),

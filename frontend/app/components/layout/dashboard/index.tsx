@@ -3,7 +3,7 @@ import { Separator } from '~/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '~/components/ui/sidebar'
 import { TooltipProvider } from '~/components/ui/tooltip'
 import type { User } from '~/services/auth'
-import { isMenuActive, menus, getVisibleMenus } from './menus'
+import { getVisibleMenuGroups, isMenuActive, menus } from './menus'
 import { Building2Icon } from 'lucide-react'
 import {
   Sidebar,
@@ -73,11 +73,12 @@ function AppSidebar({ user }: { user: User }) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+        {getVisibleMenuGroups(user).map((group) => (
+        <SidebarGroup key={group.label}>
+          <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className='gap-0.5'>
-              {getVisibleMenus(user).map((item) => (
+              {group.items.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     render={<Link to={item.url} />}
@@ -93,6 +94,7 @@ function AppSidebar({ user }: { user: User }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        ))}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={user} />
