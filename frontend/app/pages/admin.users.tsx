@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { LinkIcon, PencilIcon, PlusIcon, SearchIcon, SearchXIcon } from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, LinkIcon, PencilIcon, PlusIcon, SearchIcon, SearchXIcon } from 'lucide-react'
 import { InviteLinkDialog } from '~/components/admin/invite-link-dialog'
-import { UserAvatar } from '~/components/admin/user-avatar'
+import { UserAvatar } from '~/components/user-avatar'
 import { UserFormDialog } from '~/components/admin/user-form-dialog'
 import { UserStatusBadge } from '~/components/admin/user-status-badge'
 import { LoadError, NoAccess, StateMessage, TableSkeletonRows } from '~/components/reports/table-states'
@@ -23,6 +23,7 @@ import { formatDateTime } from '~/lib/format'
 import type { AdminUser } from '~/services/users'
 
 const SEARCH_DEBOUNCE_MS = 300
+const PAGE_SIZE = 20
 const ACTIVE_NOW_MS = 5 * 60 * 1000
 
 const col = {
@@ -31,6 +32,11 @@ const col = {
   status: 'hidden w-32 sm:table-cell',
   activity: 'hidden w-[28%] xl:table-cell',
   actions: 'w-36 pr-4',
+}
+
+function parsePage(value: string | null) {
+  const page = Number(value)
+  return Number.isInteger(page) && page > 0 ? page : 1
 }
 
 function activityText(user: AdminUser) {
@@ -49,15 +55,34 @@ export function PageAdminUsers() {
 
   const [searchParams, setSearchParams] = useSearchParams()
   const roleId = searchParams.get('role') ?? 'all'
+  const page = parsePage(searchParams.get('page'))
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
 
+  function setPage(value: number, options: { replace?: boolean } = {}) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      if (value > 1) next.set('page', String(value))
+      else next.delete('page')
+      return next
+    }, { replace: options.replace ?? false })
+  }
+
   useEffect(() => {
-    const timer = setTimeout(() => setQuery(search.trim()), SEARCH_DEBOUNCE_MS)
+    const timer = setTimeout(() => {
+      const trimmed = search.trim()
+      if (trimmed === query) return
+      setQuery(trimmed)
+      setPage(1, { replace: true })
+    }, SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [search])
 
-  const users = useUsers({ roleId, q: query })
+  const users = useUsers({ roleId, q: query, page, pageSize: PAGE_SIZE })
+
+  useEffect(() => {
+    if (users.data && users.data.page !== page) setPage(users.data.page, { replace: true })
+  }, [users.data])
   const roles = useRoles()
   const roleList = roles.data ?? []
   const filterOptions = [{ value: 'all', label: 'All roles' }, ...roleList.map((r) => ({ value: r.id, label: r.name }))]
@@ -86,6 +111,7 @@ export function PageAdminUsers() {
       const next = new URLSearchParams(prev)
       if (value === 'all') next.delete('role')
       else next.set('role', value)
+      next.delete('page')
       return next
     }, { replace: true })
   }
@@ -96,12 +122,8 @@ export function PageAdminUsers() {
     setRoleFilter('all')
   }
 
-  const footer = data
-    ? [
-        `${data.summary.all} ${data.summary.all === 1 ? 'user' : 'users'}`,
-        `${data.summary.invited} waiting to set a password`,
-      ].filter(Boolean).join(' · ')
-    : ''
+  const first = data && data.total > 0 ? (data.page - 1) * data.pageSize + 1 : 0
+  const last = first > 0 ? first + rows.length - 1 : 0
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -246,8 +268,33 @@ export function PageAdminUsers() {
           </Table>
         )}
 
-        {!failed && data && (
-          <div className="border-t px-4 py-3 text-sm text-muted-foreground">{footer}</div>
+        {!failed && data && data.total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-sm text-muted-foreground">
+            <div>Showing {first}–{last} of {data.total} {data.total === 1 ? 'user' : 'users'}</div>
+            <div className="flex items-center gap-3">
+              <span className="tabular-nums">Page {data.page} of {data.pageCount}</span>
+              <div className="flex gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Previous page"
+                  disabled={data.page <= 1 || users.isLoading}
+                  onClick={() => setPage(data.page - 1)}
+                >
+                  <ChevronLeftIcon />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Next page"
+                  disabled={data.page >= data.pageCount || users.isLoading}
+                  onClick={() => setPage(data.page + 1)}
+                >
+                  <ChevronRightIcon />
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </Card>
 

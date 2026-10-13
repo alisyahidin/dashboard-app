@@ -16,6 +16,7 @@ import {
   SidebarMenuItem,
 } from '~/components/ui/sidebar'
 import { logout, type User } from '~/services/auth'
+import { UserAvatar } from '~/components/user-avatar'
 
 function initials(name: string) {
   return name
@@ -29,9 +30,7 @@ function initials(name: string) {
 function UserSummary({ user }: { user: User }) {
   return (
     <>
-      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-xs font-medium text-sidebar-primary-foreground">
-        {initials(user.name)}
-      </div>
+      <UserAvatar name={user.name} className='bg-sidebar-primary rounded-lg text-sidebar-primary-foreground' />
       <div className="grid flex-1 text-left text-sm leading-tight">
         <span className="truncate font-medium">{user.name}</span>
         <span className="truncate text-xs text-muted-foreground">{user.email}</span>

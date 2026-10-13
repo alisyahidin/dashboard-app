@@ -1,4 +1,4 @@
-import { ApiError } from './api'
+import { api, ApiError } from './api'
 import { me } from './auth'
 import {
   delay,
@@ -27,11 +27,16 @@ export type AdminUser = {
 export type ListUsersParams = {
   roleId?: string
   q?: string
+  page?: number
+  pageSize?: number
 }
 
 export type ListUsersResponse = {
   items: AdminUser[]
   total: number
+  page: number
+  pageSize: number
+  pageCount: number
   summary: { all: number; invited: number }
 }
 
@@ -105,25 +110,44 @@ function newInvite(invitedBy: string) {
   }
 }
 
-export async function listUsers({ roleId = 'all', q = '' }: ListUsersParams = {}): Promise<ListUsersResponse> {
-  const actor = await currentActor()
-  requireAdminPermission(actor.permissions, 'users:manage', actor.role)
-  await delay(5000)
+type ApiUserListItem = {
+  id: string
+  name: string
+  email: string
+  role: { id: string; name: string } | null
+  createdAt: string
+}
 
-  const db = readDb()
-  const all = db.users.map((u) => toAdminUser(u, db.roles, actor.email))
-  const query = q.trim().toLowerCase()
-  const items = all
-    .filter((u) => roleId === 'all' || u.role.id === roleId)
-    .filter((u) => !query || u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query))
-    .sort((a, b) => Number(b.isCurrentUser) - Number(a.isCurrentUser) || a.name.localeCompare(b.name))
+export async function listUsers({ roleId = 'all', q = '', page = 1, pageSize = 8 }: ListUsersParams = {}): Promise<ListUsersResponse> {
+  const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
+  if (roleId !== 'all') params.set('role', roleId)
+  if (q.trim()) params.set('q', q.trim())
+
+  const [actor, response] = await Promise.all([
+    currentActor(),
+    api<{ items: ApiUserListItem[]; total: number; page: number; pageSize: number; pageCount: number }>(`/users?${params}`),
+  ])
+
+  const items: AdminUser[] = response.items.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: { id: user.role?.name ?? '', name: user.role?.name ?? 'No role' },
+    status: 'active',
+    lastActiveAt: null,
+    invite: null,
+    isCurrentUser: user.email.toLowerCase() === actor.email.toLowerCase(),
+  }))
 
   return {
     items,
-    total: items.length,
+    total: response.total,
+    page: response.page,
+    pageSize: response.pageSize,
+    pageCount: response.pageCount,
     summary: {
-      all: all.length,
-      invited: all.filter((u) => u.status === 'invited').length,
+      all: response.total,
+      invited: items.filter((u) => u.status === 'invited').length,
     },
   }
 }
