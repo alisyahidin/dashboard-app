@@ -123,7 +123,7 @@ export function UserFormDialog({
             <DialogDescription>
               {editing
                 ? `Changes apply the next time ${firstName} signs in.`
-                : 'Add a person and choose their role.'}
+                : 'After saving you get a login link to share. They set their own password when they open it.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -252,7 +252,7 @@ export function UserFormDialog({
                 </Button>
                 <Button type="submit" disabled={isSubmitting || pristine}>
                   {isSubmitting && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
-                  {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Add user'}
+                  {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Add user and get link'}
                 </Button>
               </DialogFooter>
             )}

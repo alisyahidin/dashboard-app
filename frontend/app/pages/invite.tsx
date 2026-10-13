@@ -1,10 +1,9 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import useSWR from 'swr'
 import {
   AlertCircleIcon,
   Building2Icon,
-  CheckIcon,
   CircleCheckIcon,
   CircleIcon,
   EyeIcon,
@@ -50,23 +49,16 @@ function Notice({
   title,
   children,
   action,
-  tone = 'neutral',
 }: {
   icon: LucideIcon
   title: string
   children: React.ReactNode
   action?: React.ReactNode
-  tone?: 'neutral' | 'success'
 }) {
   return (
     <section aria-labelledby="invite-notice-title" className="flex flex-col items-center gap-2.5 text-center">
-      <div
-        className={cn(
-          'flex size-11 items-center justify-center rounded-full',
-          tone === 'success' ? 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300' : 'bg-muted text-muted-foreground',
-        )}
-      >
-        <Icon className="size-5" strokeWidth={tone === 'success' ? 2.5 : 2} aria-hidden="true" />
+      <div className="flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="size-5" aria-hidden="true" />
       </div>
       <h1 id="invite-notice-title" className="text-xl font-semibold">{title}</h1>
       <div className="text-sm text-muted-foreground">{children}</div>
@@ -77,8 +69,8 @@ function Notice({
 
 export function PageInvite({ token }: { token: string }) {
   const invite = useSWR(['invite', token], ([, t]) => getInvite(t), { shouldRetryOnError: false, revalidateOnFocus: false })
+  const navigate = useNavigate()
   const [show, setShow] = useState(false)
-  const [done, setDone] = useState<{ email: string; role: string } | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm({
@@ -87,7 +79,8 @@ export function PageInvite({ token }: { token: string }) {
       setSubmitError(null)
       if (!checkRules(value.password, value.confirm).every((r) => r.ok)) return
       try {
-        setDone(await acceptInvite(token, value.password))
+        await acceptInvite(token, value.password)
+        navigate('/', { replace: true })
       } catch (error) {
         if (error instanceof ApiError && (error.status === 404 || error.status === 410)) {
           await invite.mutate()
@@ -108,18 +101,7 @@ export function PageInvite({ token }: { token: string }) {
   const notFound = invite.error instanceof ApiError && invite.error.status === 404
 
   let content: React.ReactNode
-  if (done) {
-    content = (
-      <Notice
-        icon={CheckIcon}
-        tone="success"
-        title="You're all set"
-        action={<Link to="/login" className={buttonVariants({ size: 'lg' })}>Go to sign in</Link>}
-      >
-        Your password is saved and your account is ready as {done.role}. Sign in with {done.email} to get started.
-      </Notice>
-    )
-  } else if (invite.isLoading) {
+  if (invite.isLoading) {
     content = (
       <div className="flex flex-col gap-4" aria-busy="true">
         <Skeleton className="h-7 w-48" />
@@ -253,7 +235,7 @@ export function PageInvite({ token }: { token: string }) {
         </form.Subscribe>
 
         <p className="text-center text-xs text-muted-foreground">
-          This link works once. After you set a password, sign in with your email.
+          This link works once. After you set a password, you're signed in.
         </p>
       </form>
     )

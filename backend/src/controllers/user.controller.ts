@@ -1,6 +1,6 @@
 import type { Request, RequestHandler } from 'express';
 import { createUserRequestSchema, listUsersQuerySchema, updateUserRequestSchema, userIdParamSchema } from '../dto/user.dto.js';
-import { NotFoundError } from '../lib/errors.js';
+import { NotFoundError, UnauthorizedError } from '../lib/errors.js';
 import { userService } from '../services/user.service.js';
 
 function getUserId(req: Request) {
@@ -15,7 +15,8 @@ export const listUsers: RequestHandler = async (req, res) => {
 
 export const createUser: RequestHandler = async (req, res) => {
   const body = createUserRequestSchema.parse(req.body);
-  res.status(201).json(await userService.create(body));
+  if (!req.auth) throw new UnauthorizedError();
+  res.status(201).json(await userService.create(body, req.auth.user.id));
 };
 
 export const updateUser: RequestHandler = async (req, res) => {

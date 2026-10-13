@@ -1,6 +1,5 @@
-import { api, ApiError } from './api'
-import { me } from './auth'
-import { delay, readDb, writeDb } from './admin-mock'
+import { api } from './api'
+import { me, type LoginResponse } from './auth'
 
 export type UserStatus = 'active' | 'invited'
 
@@ -10,7 +9,6 @@ export type AdminUser = {
   email: string
   role: { id: string; name: string }
   status: UserStatus
-  lastActiveAt: string | null
   invite: { url: string; createdAt: string } | null
   isCurrentUser: boolean
 }
@@ -28,7 +26,6 @@ export type ListUsersResponse = {
   page: number
   pageSize: number
   pageCount: number
-  summary: { all: number; invited: number }
 }
 
 export type UserRequest = {
@@ -54,6 +51,10 @@ export const passwordRules = [
   { key: 'mix', label: 'Includes a letter and a number', test: (password: string) => /[A-Za-z]/.test(password) && /\d/.test(password) },
 ] as const
 
+function inviteUrl(token: string) {
+  return `${window.location.origin}/invite/${token}`
+}
+
 async function currentActor() {
   const { user } = await me()
   return user
@@ -64,6 +65,8 @@ type ApiUserListItem = {
   name: string
   email: string
   role: { id: string; name: string } | null
+  status: UserStatus
+  invite: { token: string; createdAt: string } | null
   createdAt: string
 }
 
@@ -73,9 +76,8 @@ function fromApiUser(user: ApiUserListItem, actorEmail: string): AdminUser {
     name: user.name,
     email: user.email,
     role: { id: user.role?.id ?? '', name: user.role?.name ?? 'No role' },
-    status: 'active',
-    lastActiveAt: null,
-    invite: null,
+    status: user.status,
+    invite: user.invite ? { url: inviteUrl(user.invite.token), createdAt: user.invite.createdAt } : null,
     isCurrentUser: user.email.toLowerCase() === actorEmail.toLowerCase(),
   }
 }
@@ -90,18 +92,12 @@ export async function listUsers({ roleId = 'all', q = '', page = 1, pageSize = 8
     api<{ items: ApiUserListItem[]; total: number; page: number; pageSize: number; pageCount: number }>(`/users?${params}`),
   ])
 
-  const items: AdminUser[] = response.items.map((user) => fromApiUser(user, actor.email))
-
   return {
-    items,
+    items: response.items.map((user) => fromApiUser(user, actor.email)),
     total: response.total,
     page: response.page,
     pageSize: response.pageSize,
     pageCount: response.pageCount,
-    summary: {
-      all: response.total,
-      invited: items.filter((u) => u.status === 'invited').length,
-    },
   }
 }
 
@@ -121,36 +117,13 @@ export async function updateUser(id: string, body: UserRequest): Promise<AdminUs
   return fromApiUser(user, actor.email)
 }
 
-export async function getInvite(token: string): Promise<InviteDetails> {
-  await delay(500)
-  const db = readDb()
-  const user = db.users.find((u) => u.invite?.token === token)
-  if (!user?.invite) throw new ApiError(404, 'Invite not found')
-  if (user.invite.usedAt || user.hasPassword) return { state: 'used', email: user.email }
-  return {
-    state: 'valid',
-    name: user.name,
-    email: user.email,
-    role: db.roles.find((r) => r.id === user.roleId)?.name ?? 'No role',
-    invitedBy: user.invite.invitedBy,
-  }
+export function getInvite(token: string): Promise<InviteDetails> {
+  return api<InviteDetails>(`/invites/${encodeURIComponent(token)}`)
 }
 
-export async function acceptInvite(token: string, password: string): Promise<{ email: string; role: string }> {
-  await delay(900)
-  const db = readDb()
-  const user = db.users.find((u) => u.invite?.token === token)
-  if (!user?.invite) throw new ApiError(404, 'Invite not found')
-  if (user.invite.usedAt || user.hasPassword) throw new ApiError(410, 'This link was already used.')
-  if (!passwordRules.every((rule) => rule.test(password))) {
-    throw new ApiError(400, 'Invalid request body', { password: ['Password does not meet the requirements.'] })
-  }
-
-  const now = new Date().toISOString()
-  writeDb((d) => {
-    d.users = d.users.map((u) =>
-      u.id === user.id && u.invite ? { ...u, hasPassword: true, lastActiveAt: now, invite: { ...u.invite, usedAt: now } } : u,
-    )
+export function acceptInvite(token: string, password: string): Promise<LoginResponse> {
+  return api<LoginResponse>(`/invites/${encodeURIComponent(token)}/accept`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
   })
-  return { email: user.email, role: db.roles.find((r) => r.id === user.roleId)?.name ?? 'No role' }
 }

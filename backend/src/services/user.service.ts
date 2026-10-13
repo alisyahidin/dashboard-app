@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import {
   type CreateUserRequest,
   type ListUsersQuery,
@@ -27,7 +28,7 @@ export const userService = {
     };
   },
 
-  async create(body: CreateUserRequest): Promise<UserListItem> {
+  async create(body: CreateUserRequest, invitedBy: string): Promise<UserListItem> {
     const fieldErrors: Record<string, string[]> = {};
     if (await userRepository.emailTaken(body.email)) {
       fieldErrors['email'] = ['A user with this email already exists.'];
@@ -37,7 +38,7 @@ export const userService = {
     }
     if (Object.keys(fieldErrors).length) throw new ValidationError(fieldErrors);
 
-    const id = await userRepository.create(body);
+    const id = await userRepository.create(body, { token: randomBytes(24).toString('base64url'), invitedBy });
     const row = await userRepository.findListRowById(id);
     if (!row) throw new NotFoundError('User not found');
     return toUserListItem(row);

@@ -82,6 +82,8 @@ export const userListItemSchema = z.object({
   name: z.string(),
   email: z.email(),
   role: z.object({ id: z.uuid(), name: z.string() }).nullable(),
+  status: z.enum(['active', 'invited']),
+  invite: z.object({ token: z.string(), createdAt: z.iso.datetime({ offset: true }) }).nullable(),
   createdAt: z.iso.datetime({ offset: true }),
 });
 export type UserListItem = z.infer<typeof userListItemSchema>;
@@ -101,6 +103,10 @@ export function toUserListItem(row: UserListRow): UserListItem {
     name: row.name,
     email: row.email,
     role: row.role,
+    status: row.hasPassword ? 'active' : 'invited',
+    invite: !row.hasPassword && row.invite
+      ? { token: row.invite.token, createdAt: new Date(row.invite.createdAt).toISOString() }
+      : null,
     createdAt: new Date(row.createdAt).toISOString(),
   };
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckIcon, CopyIcon, ExternalLinkIcon, InfinityIcon, KeyRoundIcon, ShieldAlertIcon } from 'lucide-react'
+import { CheckIcon, CopyIcon, InfinityIcon, KeyRoundIcon, ShieldAlertIcon } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import {
   Dialog,

@@ -58,10 +58,6 @@ export function getVisibleMenuGroups(user: User) {
     .filter((group) => group.items.length > 0)
 }
 
-export function getVisibleMenus(user: User) {
-  return menus.filter((menu) => canSeeMenu(user, menu))
-}
-
 export function isMenuActive(menu: MenuItem, pathname: string) {
   return matchPath({ path: menu.url, end: menu.url === "/" }, pathname) !== null
 }

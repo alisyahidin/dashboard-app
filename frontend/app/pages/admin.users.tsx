@@ -19,33 +19,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip
 import { useRevalidateAdmin, useRoles, useUsers } from '~/hooks/use-admin'
 import { isForbidden } from '~/hooks/use-auth-error'
 import { useCurrentUser } from '~/hooks/use-current-user'
-import { formatDateTime } from '~/lib/format'
 import type { AdminUser } from '~/services/users'
 
 const SEARCH_DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
-const ACTIVE_NOW_MS = 5 * 60 * 1000
 
 const col = {
   user: 'pl-4',
   role: 'hidden w-36 lg:table-cell',
   status: 'hidden w-32 sm:table-cell',
-  activity: 'hidden w-[28%] xl:table-cell',
   actions: 'w-36 pr-4',
 }
 
 function parsePage(value: string | null) {
   const page = Number(value)
   return Number.isInteger(page) && page > 0 ? page : 1
-}
-
-function activityText(user: AdminUser) {
-  if (user.status === 'invited' && user.invite) {
-    return `Invited ${formatDateTime(user.invite.createdAt)}`
-  }
-  if (!user.lastActiveAt) return 'Never signed in'
-  if (Date.now() - new Date(user.lastActiveAt).getTime() < ACTIVE_NOW_MS) return 'Active now'
-  return `Last active ${formatDateTime(user.lastActiveAt)}`
 }
 
 export function PageAdminUsers() {
@@ -195,17 +183,16 @@ export function PageAdminUsers() {
                 <TableHead className={col.user}>User</TableHead>
                 <TableHead className={col.role}>Role</TableHead>
                 <TableHead className={col.status}>Status</TableHead>
-                <TableHead className={col.activity}>Activity</TableHead>
                 <TableHead className={col.actions}><span className="sr-only">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.isLoading ? (
                 <TableSkeletonRows
-                  columns={5}
+                  columns={4}
                   rows={6}
                   skeletonClassName="min-h-9"
-                  columnClassNames={[col.user, col.role, col.status, col.activity, col.actions]}
+                  columnClassNames={[col.user, col.role, col.status, col.actions]}
                 />
               ) : (
                 rows.map((user) => (
@@ -230,9 +217,6 @@ export function PageAdminUsers() {
                       <RoleBadge role={user.role.name} label={user.role.name} />
                     </TableCell>
                     <TableCell className={col.status}><UserStatusBadge status={user.status} /></TableCell>
-                    <TableCell className={`${col.activity} text-muted-foreground`}>
-                      <TruncatedText>{activityText(user)}</TruncatedText>
-                    </TableCell>
                     <TableCell className={col.actions}>
                       <div className="flex items-center justify-end gap-1">
                         {user.status === 'invited' && user.invite && (
@@ -311,7 +295,11 @@ export function PageAdminUsers() {
           setFormOpen(false)
           setEditing(null)
           revalidateAdmin()
-          toast.add({ type: 'success', title: created ? 'User added' : 'User updated', description: `${user.name} · ${user.role.name}` })
+          if (created) {
+            setLinkFor({ user, fromAdd: true })
+          } else {
+            toast.add({ type: 'success', title: 'User updated', description: `${user.name} · ${user.role.name}` })
+          }
         }}
       />
 

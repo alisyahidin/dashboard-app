@@ -33,6 +33,13 @@ export const authService = {
       throw new UnauthorizedError('Invalid email or password');
     }
 
+    return this.startSession(user, meta);
+  },
+
+  async startSession(
+    user: { id: string; name: string; email: string; roleId: string | null },
+    meta: ClientMeta,
+  ): Promise<LoginResponse> {
     const expiresAt = new Date(Date.now() + env.SESSION_TTL_HOURS * 60 * 60 * 1000);
     const [session, role] = await Promise.all([
       sessionRepository.create({
