@@ -11,6 +11,7 @@ import { isUniqueViolation } from '../lib/db-errors.js';
 import { ForbiddenError, NotFoundError, ValidationError } from '../lib/errors.js';
 import { roleRepository } from '../repositories/role.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
+import { authService } from './auth.service.js';
 
 const EMAIL_TAKEN = 'A user with this email already exists.';
 
@@ -77,6 +78,8 @@ export const userService = {
         ...(body.roleId !== undefined ? { roleId: body.roleId } : {}),
       })
       .catch(rethrowEmailTaken);
+
+    authService.invalidateUser(id);
 
     const row = await userRepository.findListRowById(id);
     if (!row) throw new NotFoundError('User not found');
