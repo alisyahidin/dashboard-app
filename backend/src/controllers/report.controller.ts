@@ -1,5 +1,6 @@
 import type { Request, RequestHandler } from 'express';
 import {
+  changeReportStatusRequestSchema,
   createReportRequestSchema,
   listReportsQuerySchema,
   reportIdParamSchema,
@@ -40,4 +41,10 @@ export const updateReport: RequestHandler = async (req, res) => {
   const id = getReportId(req);
   const body = updateReportRequestSchema.parse(req.body);
   res.json(await reportService.update(getAuth(req), id, body));
+};
+
+export const changeReportStatus: RequestHandler = async (req, res) => {
+  const id = getReportId(req);
+  const body = changeReportStatusRequestSchema.parse(req.body);
+  res.json(await reportService.changeStatus(getAuth(req), id, body));
 };

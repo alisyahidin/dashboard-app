@@ -1,4 +1,5 @@
 import type {
+  ChangeReportStatusRequest,
   CreateReportRequest,
   ListReportsQuery,
   ListReportsResponse,
@@ -6,8 +7,8 @@ import type {
   ReportDetailResponse,
   UpdateReportRequest,
 } from '../dto/report.dto.js';
-import { toReportDetailResponse, toReportResponse } from '../dto/report.dto.js';
-import { ConflictError, NotFoundError } from '../lib/errors.js';
+import { REPORT_NOTE_MIN, REPORT_REASON_MESSAGE, toReportDetailResponse, toReportResponse } from '../dto/report.dto.js';
+import { ConflictError, NotFoundError, ValidationError } from '../lib/errors.js';
 import { reportRepository } from '../repositories/report.repository.js';
 import type { AuthContext } from './auth.service.js';
 
@@ -89,6 +90,35 @@ export const reportService = {
     return loadDetail(id);
   },
 
+
+  async changeStatus(auth: AuthContext, id: string, body: ChangeReportStatusRequest): Promise<ReportDetailResponse> {
+    await reportRepository.transaction(async (tx) => {
+      const report = await reportRepository.findActiveByIdForUpdate(id, tx);
+      if (!report) throw new NotFoundError('Report not found');
+
+      if (body.expectedStatus && body.expectedStatus !== report.status) {
+        throw new ConflictError('Report status has changed since it was loaded');
+      }
+      if (report.status === body.status) throw new ConflictError(`Report is already ${report.status}`);
+      if (report.status !== 'pending' && body.note.length < REPORT_NOTE_MIN) {
+        throw new ValidationError({ note: [REPORT_REASON_MESSAGE] });
+      }
+
+      await reportRepository.updateStatus(id, body.status, tx);
+      await reportRepository.addHistory(
+        {
+          reportId: id,
+          kind: 'status',
+          fromStatus: report.status,
+          toStatus: body.status,
+          actorId: auth.user.id,
+          note: body.note,
+        },
+        tx,
+      );
+    });
+    return loadDetail(id);
+  },
 
   async countByStatus(auth: AuthContext): Promise<ReportCounts> {
     const counts = await reportRepository.countByStatus(ownerScope(auth));

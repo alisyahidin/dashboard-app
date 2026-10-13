@@ -40,6 +40,22 @@ export type UpdateReportRequest = z.infer<typeof updateReportRequestSchema>;
 export const reportStatusSchema = z.enum(['pending', 'approved', 'rejected']);
 export type ReportStatus = z.infer<typeof reportStatusSchema>;
 
+export const REPORT_NOTE_MIN = 5;
+export const REPORT_NOTE_MAX = 500;
+export const REPORT_REASON_MESSAGE = `Add a reason of at least ${REPORT_NOTE_MIN} characters.`;
+
+export const changeReportStatusRequestSchema = z
+  .object({
+    status: z.enum(['approved', 'rejected']),
+    note: z.string().trim().max(REPORT_NOTE_MAX, `Note must be ${REPORT_NOTE_MAX} characters or fewer.`).default(''),
+    expectedStatus: reportStatusSchema.optional(),
+  })
+  .refine((body) => body.status !== 'rejected' || body.note.length >= REPORT_NOTE_MIN, {
+    message: REPORT_REASON_MESSAGE,
+    path: ['note'],
+  });
+export type ChangeReportStatusRequest = z.infer<typeof changeReportStatusRequestSchema>;
+
 export const REPORT_PAGE_SIZE_DEFAULT = 20;
 export const REPORT_PAGE_SIZE_MAX = 100;
 

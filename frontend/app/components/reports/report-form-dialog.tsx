@@ -14,6 +14,7 @@ import {
 import { Field, FieldDescription, FieldError, FieldLabel } from '~/components/ui/field'
 import { Input } from '~/components/ui/input'
 import { Textarea } from '~/components/ui/textarea'
+import { useAuthErrorHandler } from '~/hooks/use-auth-error'
 import { useForm } from '~/hooks/use-form'
 import { ApiError } from '~/services/api'
 import {
@@ -53,6 +54,7 @@ export function ReportFormDialog({
   onStale?: (error: ApiError) => void
 }) {
   const editing = Boolean(report)
+  const handleAuthError = useAuthErrorHandler()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm({
@@ -71,6 +73,12 @@ export function ReportFormDialog({
         form.reset()
         onSaved(saved)
       } catch (error) {
+        if (handleAuthError(error)) {
+          form.reset()
+          setSubmitError(null)
+          onOpenChange(false)
+          return
+        }
         if (report && error instanceof ApiError && (error.status === 404 || error.status === 409)) {
           form.reset()
           onStale?.(error)

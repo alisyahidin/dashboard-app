@@ -12,7 +12,7 @@ export const PERMISSIONS = [
 export type Permission = (typeof PERMISSIONS)[number];
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
-  admin: PERMISSIONS,
-  supervisor: ['users:read', 'reports:read', 'reports:write', 'reports:approve'],
+  admin: PERMISSIONS.filter((permission) => permission !== 'reports:write'),
+  supervisor: ['users:read', 'reports:read', 'reports:approve'],
   officer: ['reports:read', 'reports:write', 'reports:edit'],
 };

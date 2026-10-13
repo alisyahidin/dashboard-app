@@ -12,13 +12,14 @@ import {
 } from 'lucide-react'
 import { ReportFormDialog } from '~/components/reports/report-form-dialog'
 import { ReportStatusBadge } from '~/components/reports/report-status-badge'
-import { LoadError, StateMessage, TableSkeletonRows } from '~/components/reports/table-states'
+import { LoadError, NoAccess, StateMessage, TableSkeletonRows } from '~/components/reports/table-states'
 import { Button, buttonVariants } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~/components/ui/table'
 import { toast } from '~/components/ui/toast'
 import { TruncatedText } from '~/components/truncated-text'
+import { isForbidden } from '~/hooks/use-auth-error'
 import { useCurrentUser } from '~/hooks/use-current-user'
 import { useReportCounts, useReports, useRevalidateReports } from '~/hooks/use-reports'
 import { formatDateTime } from '~/lib/format'
@@ -100,7 +101,11 @@ export function PageDashboard() {
           </Link>
         </div>
 
-        {failed ? (
+        {failed && isForbidden(latestQuery.error) ? (
+          <div className="border-t">
+            <NoAccess description="Your role can't view reports. Ask an admin if you need access." />
+          </div>
+        ) : failed ? (
           <div className="border-t">
             <LoadError detail="GET /api/v1/reports failed" onRetry={() => revalidateReports()} />
           </div>

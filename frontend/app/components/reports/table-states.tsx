@@ -1,6 +1,6 @@
 import { cn } from 'cn'
 import type { LucideIcon } from 'lucide-react'
-import { AlertCircleIcon, RefreshCwIcon } from 'lucide-react'
+import { AlertCircleIcon, LockIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '~/components/ui/button'
 import { Skeleton } from '~/components/ui/skeleton'
 import { TableCell, TableRow } from '~/components/ui/table'
@@ -79,6 +79,14 @@ export function LoadError({ detail, onRetry }: { detail: string; onRetry: () => 
           Try again
         </Button>
       </StateMessage>
+    </div>
+  )
+}
+
+export function NoAccess({ description }: { description: string }) {
+  return (
+    <div role="alert">
+      <StateMessage icon={LockIcon} title="You don't have access" description={description} />
     </div>
   )
 }

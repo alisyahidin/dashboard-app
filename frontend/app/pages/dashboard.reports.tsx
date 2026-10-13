@@ -18,7 +18,7 @@ import { ReportFormDialog } from '~/components/reports/report-form-dialog'
 import { RejectReportDialog } from '~/components/reports/reject-report-dialog'
 import { ReportHistorySheet } from '~/components/reports/report-history-sheet'
 import { ReportStatusBadge } from '~/components/reports/report-status-badge'
-import { LoadError, StateMessage, TableSkeletonRows } from '~/components/reports/table-states'
+import { LoadError, NoAccess, StateMessage, TableSkeletonRows } from '~/components/reports/table-states'
 import { Button } from '~/components/ui/button'
 import { Card } from '~/components/ui/card'
 import { Input } from '~/components/ui/input'
@@ -27,13 +27,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '~
 import { toast } from '~/components/ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '~/components/ui/tooltip'
 import { TruncatedText } from '~/components/truncated-text'
+import { isForbidden, useAuthErrorHandler } from '~/hooks/use-auth-error'
 import { useCurrentUser } from '~/hooks/use-current-user'
 import { useReportCounts, useReports, useRevalidateReports } from '~/hooks/use-reports'
 import { formatDateTime } from '~/lib/format'
 import { canEditReport, hasPermission } from '~/lib/permissions'
-import type { Report, ReportStatus, ReportStatusFilter } from '~/services/reports'
+import { ApiError } from '~/services/api'
+import { changeReportStatus, type Report, type ReportStatus, type ReportStatusFilter } from '~/services/reports'
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 20
 const SEARCH_DEBOUNCE_MS = 300
 
 const statusOptions: { value: ReportStatusFilter; label: string }[] = [
@@ -56,12 +58,15 @@ function parseReportId(value: string | null) {
   return value?.trim() || null
 }
 
+const statusLabel: Record<ReportStatus, string> = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' }
+
 const col = {
   id: 'hidden w-20 pl-4 xl:table-cell',
   name: 'pl-4 xl:pl-2',
-  description: 'hidden w-[24%] xl:table-cell',
+  description: 'hidden w-[20%] 2xl:table-cell',
   status: 'hidden w-28 sm:table-cell',
-  created: 'hidden w-40 lg:table-cell',
+  reporter: 'hidden w-32 lg:table-cell',
+  created: 'hidden w-40 xl:table-cell',
   actions: 'w-52 pr-4 sm:w-60',
 }
 
@@ -129,6 +134,7 @@ export function PageReports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
 
+  const handleAuthError = useAuthErrorHandler()
   const [createOpen, setCreateOpen] = useState(false)
   const [rejecting, setRejecting] = useState<Report | null>(null)
   const [editing, setEditing] = useState<Report | null>(null)
@@ -143,11 +149,60 @@ export function PageReports() {
     })
   }
 
-  async function decide(report: Report, _to: Exclude<ReportStatus, 'pending'>, _note = ''): Promise<boolean> {
+  async function decide(report: Report, to: Exclude<ReportStatus, 'pending'>, note = ''): Promise<boolean> {
     if (busyIds.has(report.id)) return false
     setRejecting(null)
     setBusy(report.id, true)
+    const changing = report.status !== 'pending'
     try {
+      await changeReportStatus(report.id, { status: to, note, expectedStatus: report.status })
+      toast.add({
+        type: 'success',
+        title: changing ? `Decision changed to ${statusLabel[to]}` : to === 'approved' ? 'Report approved' : 'Report rejected',
+        description: `${report.name} · added to history`,
+      })
+      revalidateReports()
+      return true
+    } catch (error) {
+      if (handleAuthError(error)) return false
+      const status = error instanceof ApiError ? error.status : -1
+      if (status === 404) {
+        toast.add({
+          type: 'error',
+          title: 'Report not found',
+          description: `Report #${report.number} no longer exists on the server, so nothing was changed. The list has been refreshed.`,
+        })
+        revalidateReports()
+      } else if (status === 409) {
+        toast.add({
+          type: 'warning',
+          title: changing ? 'Status changed elsewhere' : 'Already reviewed',
+          description: `Report #${report.number} was updated in another session before your decision arrived. The table now shows its current status.`,
+        })
+        revalidateReports()
+      } else if (status === 400) {
+        toast.add({
+          type: 'error',
+          title: 'Decision was not saved',
+          description: error instanceof ApiError ? Object.values(error.fieldErrors ?? {}).flat()[0] ?? error.message : 'Invalid request.',
+        })
+      } else {
+        const toastId = toast.add({
+          type: 'error',
+          title: 'Decision was not saved',
+          description: status === 0
+            ? `The server could not be reached. Report #${report.number} is still ${report.status}.`
+            : `Something went wrong. Report #${report.number} is still ${report.status}.`,
+          timeout: 10_000,
+          actionProps: {
+            children: 'Retry',
+            onClick: () => {
+              toast.close(toastId)
+              decide(report, to, note)
+            },
+          },
+        })
+      }
       return false
     } finally {
       setBusy(report.id, false)
@@ -220,7 +275,11 @@ export function PageReports() {
           </Select>
         </div>
 
-        {failed ? (
+        {failed && isForbidden(list.error) ? (
+          <div className="border-t">
+            <NoAccess description="Your role can't view reports. Ask an admin if you need access." />
+          </div>
+        ) : failed ? (
           <div className="border-t">
             <LoadError detail="GET /api/v1/reports failed" onRetry={() => list.mutate()} />
           </div>
@@ -260,6 +319,7 @@ export function PageReports() {
                 <TableHead className={col.id}>ID</TableHead>
                 <TableHead className={col.name}>Name</TableHead>
                 <TableHead className={col.description}>Description</TableHead>
+                <TableHead className={col.reporter}>Reporter</TableHead>
                 <TableHead className={col.status}>Status</TableHead>
                 <TableHead className={col.created}>Created</TableHead>
                 <TableHead className={col.actions}>Actions</TableHead>
@@ -268,10 +328,18 @@ export function PageReports() {
             <TableBody>
               {list.isLoading ? (
                 <TableSkeletonRows
-                  columns={6}
+                  columns={7}
                   rows={5}
                   skeletonClassName="min-h-7"
-                  columnClassNames={[col.id, col.name, col.description, col.status, col.created, col.actions]}
+                  columnClassNames={[
+                    col.id,
+                    col.name,
+                    col.description,
+                    col.reporter,
+                    col.status,
+                    col.created,
+                    col.actions,
+                  ]}
                 />
               ) : (
                 rows.map((report) => {
@@ -292,10 +360,16 @@ export function PageReports() {
                         >
                           {report.name}
                         </TruncatedText>
+                        <TruncatedText className="text-xs font-normal text-muted-foreground lg:hidden">
+                          {report.submittedBy.name}
+                        </TruncatedText>
                         <div className="mt-1 sm:hidden"><ReportStatusBadge status={report.status} /></div>
                       </TableCell>
                       <TableCell className={`${col.description} text-muted-foreground`}>
                         <TruncatedText>{report.description}</TruncatedText>
+                      </TableCell>
+                      <TableCell className={`${col.reporter} text-muted-foreground`}>
+                        <TruncatedText>{report.submittedBy.name}</TruncatedText>
                       </TableCell>
                       <TableCell className={col.status}><ReportStatusBadge status={report.status} /></TableCell>
                       <TableCell className={`${col.created} text-muted-foreground tabular-nums`}>

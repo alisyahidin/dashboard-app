@@ -80,3 +80,13 @@ export function createReport(body: CreateReportRequest) {
 export function updateReport(id: string, body: UpdateReportRequest) {
   return api<ReportDetail>(`/reports/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(body) })
 }
+
+export type ChangeReportStatusRequest = {
+  status: Exclude<ReportStatus, 'pending'>
+  note: string
+  expectedStatus: ReportStatus
+}
+
+export function changeReportStatus(id: string, body: ChangeReportStatusRequest) {
+  return api<ReportDetail>(`/reports/${encodeURIComponent(id)}/status`, { method: 'POST', body: JSON.stringify(body) })
+}

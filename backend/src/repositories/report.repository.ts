@@ -62,6 +62,13 @@ export const reportRepository = {
       .where(eq(reports.id, id));
   },
 
+  async updateStatus(id: string, status: Report['status'], executor: Executor = db) {
+    await executor
+      .update(reports)
+      .set({ status, reviewedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(eq(reports.id, id));
+  },
+
   async addHistory(entry: NewReportHistory, executor: Executor = db) {
     await executor.insert(reportHistory).values(entry);
   },

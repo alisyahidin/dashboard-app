@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { AlertCircleIcon, ArrowLeftRightIcon, CheckIcon, FileXIcon, Loader2Icon, PencilIcon, PlusIcon, RefreshCwIcon, XIcon } from 'lucide-react'
 import { cn } from 'cn'
 import { ReportStatusBadge } from '~/components/reports/report-status-badge'
-import { StateMessage } from '~/components/reports/table-states'
+import { NoAccess, StateMessage } from '~/components/reports/table-states'
 import { Button } from '~/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '~/components/ui/field'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '~/components/ui/sheet'
 import { Skeleton } from '~/components/ui/skeleton'
 import { Textarea } from '~/components/ui/textarea'
+import { isForbidden } from '~/hooks/use-auth-error'
 import { useReport } from '~/hooks/use-reports'
 import { formatDateTime } from '~/lib/format'
 import { ApiError } from '~/services/api'
@@ -228,6 +229,11 @@ export function ReportHistorySheet({
               </ol>
             </section>
           </>
+        ) : isForbidden(error) ? (
+          <div className="flex flex-1 items-center">
+            <SheetTitle className="sr-only">No access</SheetTitle>
+            <NoAccess description="Your role can't view this report." />
+          </div>
         ) : notFound ? (
           <div className="flex flex-1 items-center">
             <SheetTitle className="sr-only">Report not found</SheetTitle>

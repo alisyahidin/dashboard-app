@@ -35,3 +35,13 @@ export class ConflictError extends HttpError {
     this.name = 'ConflictError';
   }
 }
+
+export class ValidationError extends HttpError {
+  constructor(
+    public readonly fieldErrors: Record<string, string[]>,
+    message = 'Invalid request body',
+  ) {
+    super(400, message);
+    this.name = 'ValidationError';
+  }
+}

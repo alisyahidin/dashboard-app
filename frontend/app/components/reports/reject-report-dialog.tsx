@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { z } from 'zod'
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,7 +11,16 @@ import {
 import { Button } from '~/components/ui/button'
 import { Field, FieldDescription, FieldError, FieldLabel } from '~/components/ui/field'
 import { Textarea } from '~/components/ui/textarea'
+import { useForm } from '~/hooks/use-form'
 import { REPORT_NOTE_MAX, REPORT_NOTE_MIN, type Report } from '~/services/reports'
+
+const RejectReportSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(REPORT_NOTE_MIN, `Add a reason of at least ${REPORT_NOTE_MIN} characters.`)
+    .max(REPORT_NOTE_MAX, `Reason must be ${REPORT_NOTE_MAX} characters or fewer.`),
+})
 
 export function RejectReportDialog({
   report,
@@ -22,59 +31,76 @@ export function RejectReportDialog({
   onCancel: () => void
   onConfirm: (report: Report, reason: string) => void
 }) {
-  const [reason, setReason] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const form = useForm({
+    defaultValues: {
+      reason: '',
+    },
+    validators: {
+      onChange: RejectReportSchema,
+    },
+    onSubmit: ({ value }) => {
+      if (!report) return
+      form.reset()
+      onConfirm(report, value.reason.trim())
+    },
+  })
 
   function close() {
-    setReason('')
-    setError(null)
+    form.reset()
     onCancel()
-  }
-
-  function confirm() {
-    if (!report) return
-    const trimmed = reason.trim()
-    if (trimmed.length < REPORT_NOTE_MIN) {
-      setError(`Add a reason of at least ${REPORT_NOTE_MIN} characters.`)
-      return
-    }
-    setReason('')
-    setError(null)
-    onConfirm(report, trimmed)
   }
 
   return (
     <AlertDialog open={report !== null} onOpenChange={(open) => { if (!open) close() }}>
       <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Reject this report?</AlertDialogTitle>
-          <AlertDialogDescription>
-            “{report?.name}” will be marked Rejected. The reason is saved in the report's status history.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <Field data-invalid={Boolean(error)}>
-          <FieldLabel htmlFor="reject-reason">Reason</FieldLabel>
-          <Textarea
-            id="reject-reason"
-            rows={3}
-            className="min-h-20 resize-none"
-            placeholder="What is missing or wrong in this report?"
-            value={reason}
-            maxLength={REPORT_NOTE_MAX}
-            aria-invalid={Boolean(error)}
-            onChange={(e) => {
-              setReason(e.target.value)
-              setError(null)
+        <form
+          noValidate
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            form.handleSubmit()
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this report?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{report?.name}” will be marked Rejected. The reason is saved in the report's status history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <form.Field name="reason">
+            {(field) => {
+              const invalid = field.state.meta.isTouched && !field.state.meta.isValid
+              return (
+                <Field data-invalid={invalid}>
+                  <FieldLabel htmlFor="reject-reason">Reason</FieldLabel>
+                  <Textarea
+                    id="reject-reason"
+                    name={field.name}
+                    rows={3}
+                    className="min-h-20 resize-none"
+                    placeholder="What is missing or wrong in this report?"
+                    value={field.state.value}
+                    maxLength={REPORT_NOTE_MAX}
+                    onBlur={field.handleBlur}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    aria-invalid={invalid}
+                  />
+                  {invalid ? (
+                    <FieldError errors={field.state.meta.errors} />
+                  ) : (
+                    <FieldDescription>Required, at least {REPORT_NOTE_MIN} characters.</FieldDescription>
+                  )}
+                </Field>
+              )
             }}
-          />
-          {error ? <FieldError>{error}</FieldError> : <FieldDescription>Required, at least {REPORT_NOTE_MIN} characters.</FieldDescription>}
-        </Field>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <Button className="bg-destructive text-white hover:bg-destructive/90" onClick={confirm}>
-            Reject report
-          </Button>
-        </AlertDialogFooter>
+          </form.Field>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
+            <Button type="submit" className="bg-destructive text-white hover:bg-destructive/90">
+              Reject report
+            </Button>
+          </AlertDialogFooter>
+        </form>
       </AlertDialogContent>
     </AlertDialog>
   )
