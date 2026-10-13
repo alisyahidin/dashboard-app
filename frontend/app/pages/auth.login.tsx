@@ -15,7 +15,7 @@ import { ApiError } from '~/services/api'
 import { login } from '~/services/auth'
 
 const LoginSchema = z.object({
-  email: z.email('Enter a valid email address'),
+  email: z.string().trim().email('Enter a valid email address'),
   password: z.string().min(1, 'Password is required'),
 })
 

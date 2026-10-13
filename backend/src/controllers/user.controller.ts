@@ -10,7 +10,12 @@ function getUserId(req: Request) {
 }
 
 export const listUsers: RequestHandler = async (req, res) => {
-  res.json(await userService.list(listUsersQuerySchema.parse(req.query)));
+  const result = await userService.list(listUsersQuerySchema.parse(req.query));
+  if (req.auth?.role?.name === 'admin') {
+    res.json(result);
+    return;
+  }
+  res.json({ ...result, items: result.items.map((user) => ({ ...user, invite: null })) });
 };
 
 export const createUser: RequestHandler = async (req, res) => {
@@ -22,5 +27,6 @@ export const createUser: RequestHandler = async (req, res) => {
 export const updateUser: RequestHandler = async (req, res) => {
   const id = getUserId(req);
   const body = updateUserRequestSchema.parse(req.body);
-  res.json(await userService.update(id, body));
+  if (!req.auth) throw new UnauthorizedError();
+  res.json(await userService.update(id, body, req.auth.user.id));
 };

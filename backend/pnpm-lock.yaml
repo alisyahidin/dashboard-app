@@ -26,6 +26,9 @@ importers:
       jose:
         specifier: ^6.2.12
         version: 6.2.12
+      lru-cache:
+        specifier: ^11.5.3
+        version: 11.5.3
       pg:
         specifier: ^8.23.1
         version: 8.23.1
@@ -955,6 +958,10 @@ packages:
   jsbi@4.3.2:
     resolution: {integrity: sha512-9fqMSQbhJykSeii05nxKl4m6Eqn2P6rOlYiS+C5Dr/HPIU/7yZxu5qzbs40tgaFORiw2Amd0mirjxatXYMkIew==}
 
+  lru-cache@11.5.3:
+    resolution: {integrity: sha512-U4N8FgzmWxc8k1VH8Kr6lQg18U7Fjvby6wXHVRX/ZZ7IwWbRMgrRbP0Wrb5q5NVinryp4SQampHKdvtecItxUg==}
+    engines: {node: 20 || >=22}
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -1779,6 +1786,8 @@ snapshots:
   jose@6.2.12: {}
 
   jsbi@4.3.2: {}
+
+  lru-cache@11.5.3: {}
 
   math-intrinsics@1.1.0: {}
 

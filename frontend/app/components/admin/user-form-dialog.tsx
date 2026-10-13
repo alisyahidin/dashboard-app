@@ -122,7 +122,7 @@ export function UserFormDialog({
             <DialogTitle>{editing ? 'Edit user' : 'Add user'}</DialogTitle>
             <DialogDescription>
               {editing
-                ? `Changes apply the next time ${firstName} signs in.`
+                ? `Changes apply to ${firstName} right away.`
                 : 'After saving you get a login link to share. They set their own password when they open it.'}
             </DialogDescription>
           </DialogHeader>

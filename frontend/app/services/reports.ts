@@ -33,6 +33,7 @@ export type ReportCounts = Record<ReportStatusFilter, number>
 export type ListReportsParams = {
   status?: ReportStatusFilter
   q?: string
+  officer?: string
   page?: number
   pageSize?: number
 }
@@ -59,9 +60,10 @@ export const REPORT_DESCRIPTION_MAX = 500
 export const REPORT_NOTE_MIN = 5
 export const REPORT_NOTE_MAX = 500
 
-export function listReports({ status = 'all', q = '', page = 1, pageSize = 8 }: ListReportsParams = {}) {
+export function listReports({ status = 'all', q = '', officer = '', page = 1, pageSize = 8 }: ListReportsParams = {}) {
   const params = new URLSearchParams({ status, page: String(page), pageSize: String(pageSize) })
   if (q.trim()) params.set('q', q.trim())
+  if (officer) params.set('officer', officer)
   return api<ListReportsResponse>(`/reports?${params}`)
 }
 

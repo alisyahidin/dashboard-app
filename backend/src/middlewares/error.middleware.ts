@@ -1,6 +1,7 @@
 import type { ErrorRequestHandler } from 'express';
 import { ZodError, z } from 'zod';
 import { HttpError, ValidationError } from '../lib/errors.js';
+import { TooManyAttemptsError } from '../lib/login-throttle.js';
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
@@ -11,8 +12,15 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(err.status).json({ message: err.message, errors: err.fieldErrors });
     return;
   }
+  if (err instanceof TooManyAttemptsError) {
+    res.set('Retry-After', String(err.retryAfterSeconds));
+  }
   if (err instanceof HttpError) {
     res.status(err.status).json({ message: err.message });
+    return;
+  }
+  if (err?.type === 'entity.parse.failed') {
+    res.status(400).json({ message: 'Request body is not valid JSON' });
     return;
   }
   console.error(err);

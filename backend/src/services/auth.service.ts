@@ -1,9 +1,11 @@
 import argon2 from 'argon2';
+import { LRUCache } from 'lru-cache';
 import { env } from '../config/env.js';
 import type { LoginRequest, LoginResponse, MeResponse } from '../dto/auth.dto.js';
 import { toUserResponse } from '../dto/user.dto.js';
 import { UnauthorizedError } from '../lib/errors.js';
 import { signAccessToken, verifyAccessToken } from '../lib/jwt.js';
+import { loginThrottle } from '../lib/login-throttle.js';
 import { type RoleWithPermissions, roleRepository } from '../repositories/role.repository.js';
 import { sessionRepository } from '../repositories/session.repository.js';
 import { userRepository } from '../repositories/user.repository.js';
@@ -19,6 +21,11 @@ export type AuthContext = ActiveSession & {
 
 export type ClientMeta = { ipAddress: string | null; userAgent: string | null };
 
+const AUTH_CACHE_MAX = 5000;
+const AUTH_CACHE_TTL_MS = env.AUTH_CACHE_TTL_SECONDS * 1000;
+
+const authCache = new LRUCache<string, AuthContext>({ max: AUTH_CACHE_MAX });
+
 async function loadRole(roleId: string | null): Promise<RoleWithPermissions | null> {
   if (roleId === null) return null;
   return (await roleRepository.findWithPermissions(roleId)) ?? null;
@@ -26,12 +33,15 @@ async function loadRole(roleId: string | null): Promise<RoleWithPermissions | nu
 
 export const authService = {
   async login({ email, password }: LoginRequest, meta: ClientMeta): Promise<LoginResponse> {
+    loginThrottle.assertAllowed(email, meta.ipAddress);
     const user = await userRepository.findActiveByEmail(email);
 
     const passwordValid = await argon2.verify(user?.passwordHash ?? DUMMY_HASH, password);
     if (!user?.passwordHash || !passwordValid) {
+      loginThrottle.recordFailure(email, meta.ipAddress);
       throw new UnauthorizedError('Invalid email or password');
     }
+    loginThrottle.reset(email, meta.ipAddress);
 
     return this.startSession(user, meta);
   },
@@ -65,11 +75,24 @@ export const authService = {
     const payload = await verifyAccessToken(token);
     if (!payload) throw new UnauthorizedError();
 
+    const cached = authCache.get(payload.sid);
+    if (cached && cached.user.id === payload.sub) return cached;
+
     const active = await sessionRepository.findActiveWithUser(payload.sid, payload.sub);
     if (!active) throw new UnauthorizedError();
 
     const role = await loadRole(active.user.roleId);
-    return { ...active, role, permissions: new Set(role?.permissions) };
+    const auth = { ...active, role, permissions: new Set(role?.permissions) };
+
+    const ttl = Math.min(AUTH_CACHE_TTL_MS, new Date(active.session.expiresAt).getTime() - Date.now());
+    if (ttl > 0) authCache.set(payload.sid, auth, { ttl });
+    return auth;
+  },
+
+  invalidateUser(userId: string) {
+    for (const [sessionId, auth] of authCache.entries()) {
+      if (auth.user.id === userId) authCache.delete(sessionId);
+    }
   },
 
   me({ user, session, role }: AuthContext): MeResponse {
@@ -82,6 +105,8 @@ export const authService = {
   async logout(token: string | null): Promise<void> {
     if (!token) return;
     const auth = await this.authenticate(token).catch(() => null);
-    if (auth) await sessionRepository.revoke(auth.session.id);
+    if (!auth) return;
+    await sessionRepository.revoke(auth.session.id);
+    authCache.delete(auth.session.id);
   },
 };

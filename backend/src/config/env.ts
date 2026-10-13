@@ -6,6 +6,7 @@ const envSchema = z.object({
   DATABASE_URL: z.url(),
   JWT_SECRET: z.string().min(32),
   SESSION_TTL_HOURS: z.coerce.number().positive().default(24),
+  AUTH_CACHE_TTL_SECONDS: z.coerce.number().int().min(0).default(30),
 });
 
 export const env = envSchema.parse(process.env);
