@@ -18,7 +18,7 @@ app.use("/api/v1", routes);
 
 app.use(errorHandler);
 
-const server = app.listen(env.PORT, () => {
+const server = app.listen(parseInt(env.PORT), '0.0.0.0', () => {
 	console.log(`Server running at http://localhost:${env.PORT}`);
 });
 
