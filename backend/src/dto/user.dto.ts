@@ -24,6 +24,48 @@ export function toUserResponse(
   };
 }
 
+export const USER_NAME_MIN = 2;
+export const USER_NAME_MAX = 80;
+
+export const userIdParamSchema = z.uuid();
+
+export const createUserRequestSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(USER_NAME_MIN, "Enter the person's full name.")
+    .max(USER_NAME_MAX, `Name must be ${USER_NAME_MAX} characters or fewer.`),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .pipe(z.email('Enter a valid email address, like name@company.com.')),
+  roleId: z.uuid('Choose a role.'),
+});
+export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
+
+export const updateUserRequestSchema = z
+  .object({
+    name: z
+      .string()
+      .trim()
+      .min(USER_NAME_MIN, "Enter the person's full name.")
+      .max(USER_NAME_MAX, `Name must be ${USER_NAME_MAX} characters or fewer.`)
+      .optional(),
+    email: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.email('Enter a valid email address, like name@company.com.'))
+      .optional(),
+    roleId: z.uuid('Choose a role.').optional(),
+  })
+  .refine((body) => body.name !== undefined || body.email !== undefined || body.roleId !== undefined, {
+    message: 'Provide a name, email or role to update.',
+    path: ['name'],
+  });
+export type UpdateUserRequest = z.infer<typeof updateUserRequestSchema>;
+
 export const USER_PAGE_SIZE_DEFAULT = 20;
 export const USER_PAGE_SIZE_MAX = 100;
 

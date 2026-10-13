@@ -85,7 +85,7 @@ export function PageAdminUsers() {
   }, [users.data])
   const roles = useRoles()
   const roleList = roles.data ?? []
-  const filterOptions = [{ value: 'all', label: 'All roles' }, ...roleList.map((r) => ({ value: r.id, label: r.name }))]
+  const filterOptions = [{ value: 'all', label: 'All roles' }, ...roleList.map((r) => ({ value: r.name, label: r.name }))]
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<AdminUser | null>(null)
@@ -220,14 +220,14 @@ export function PageAdminUsers() {
                           </div>
                           <TruncatedText className="text-xs text-muted-foreground">{user.email}</TruncatedText>
                           <div className="mt-1 flex flex-wrap gap-1 lg:hidden">
-                            <RoleBadge role={user.role.id} label={user.role.name} />
+                            <RoleBadge role={user.role.name} label={user.role.name} />
                             <span className="sm:hidden"><UserStatusBadge status={user.status} /></span>
                           </div>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className={col.role}>
-                      <RoleBadge role={user.role.id} label={user.role.name} />
+                      <RoleBadge role={user.role.name} label={user.role.name} />
                     </TableCell>
                     <TableCell className={col.status}><UserStatusBadge status={user.status} /></TableCell>
                     <TableCell className={`${col.activity} text-muted-foreground`}>
@@ -311,11 +311,7 @@ export function PageAdminUsers() {
           setFormOpen(false)
           setEditing(null)
           revalidateAdmin()
-          if (created) {
-            setLinkFor({ user, fromAdd: true })
-          } else {
-            toast.add({ type: 'success', title: 'User updated', description: `${user.name} · ${user.role.name}` })
-          }
+          toast.add({ type: 'success', title: created ? 'User added' : 'User updated', description: `${user.name} · ${user.role.name}` })
         }}
       />
 

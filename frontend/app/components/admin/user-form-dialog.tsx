@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import { useAuthErrorHandler } from '~/hooks/use-auth-error'
 import { useForm } from '~/hooks/use-form'
 import { ApiError } from '~/services/api'
-import type { AdminRole } from '~/services/roles'
+import type { Role } from '~/services/roles'
 import { createUser, updateUser, USER_NAME_MAX, USER_NAME_MIN, type AdminUser } from '~/services/users'
 
 const UserSchema = z.object({
@@ -39,7 +39,7 @@ export function UserFormDialog({
 }: {
   open: boolean
   user: AdminUser | null
-  roles: AdminRole[]
+  roles: Role[]
   onOpenChange: (open: boolean) => void
   onSaved: (user: AdminUser, created: boolean) => void
 }) {
@@ -48,7 +48,7 @@ export function UserFormDialog({
   const handleAuthError = useAuthErrorHandler()
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({})
-  const defaultRoleId = roles.find((r) => r.id === 'officer')?.id ?? roles[0]?.id ?? ''
+  const defaultRoleId = roles.find((r) => r.name === 'officer')?.id ?? roles[0]?.id ?? ''
 
   const form = useForm({
     defaultValues: {
@@ -123,7 +123,7 @@ export function UserFormDialog({
             <DialogDescription>
               {editing
                 ? `Changes apply the next time ${firstName} signs in.`
-                : 'After saving you get a login link to share. They set their own password when they open it.'}
+                : 'Add a person and choose their role.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -200,7 +200,6 @@ export function UserFormDialog({
 
           <form.Field name="roleId">
             {(field) => {
-              const role = roles.find((r) => r.id === field.state.value)
               const serverError = serverErrors['roleId']
               const invalid = !field.state.meta.isValid || Boolean(serverError)
               return (
@@ -228,11 +227,9 @@ export function UserFormDialog({
                     <FieldError>{serverError}</FieldError>
                   ) : invalid ? (
                     <FieldError errors={field.state.meta.errors} />
-                  ) : (
-                    <FieldDescription>
-                      {roleLocked ? "You can't change your own role. Ask another admin." : role?.description}
-                    </FieldDescription>
-                  )}
+                  ) : roleLocked ? (
+                    <FieldDescription>You can't change your own role. Ask another admin.</FieldDescription>
+                  ) : null}
                 </Field>
               )
             }}
@@ -255,7 +252,7 @@ export function UserFormDialog({
                 </Button>
                 <Button type="submit" disabled={isSubmitting || pristine}>
                   {isSubmitting && <Loader2Icon data-icon="inline-start" className="animate-spin" />}
-                  {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Add user and get link'}
+                  {isSubmitting ? 'Saving…' : editing ? 'Save changes' : 'Add user'}
                 </Button>
               </DialogFooter>
             )}

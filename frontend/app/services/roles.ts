@@ -1,4 +1,4 @@
-import { ApiError } from './api'
+import { api, ApiError } from './api'
 import { me } from './auth'
 import {
   ALL_PERMISSION_KEYS,
@@ -22,6 +22,11 @@ export type AdminRole = {
   custom: boolean
   permissions: PermissionKey[]
   userCount: number
+}
+
+export type Role = {
+  id: string
+  name: string
 }
 
 export type CreateRoleRequest = {
@@ -73,11 +78,8 @@ function toAdminRole(role: MockRole, userCount: number): AdminRole {
   return { ...role, permissions: [...role.permissions], userCount }
 }
 
-export async function listRoles(): Promise<AdminRole[]> {
-  await requireRolesManager()
-  await delay(500)
-  const db = readDb()
-  return db.roles.map((role) => toAdminRole(role, db.users.filter((u) => u.roleId === role.id).length))
+export function listRoles(): Promise<Role[]> {
+  return api<Role[]>('/roles')
 }
 
 export async function createRole(body: CreateRoleRequest): Promise<AdminRole> {
